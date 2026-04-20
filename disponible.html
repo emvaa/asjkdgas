@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¿Puedo hablar?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --on:  #16a36a;
+    --on-glow: rgba(22,163,106,0.18);
+    --off: #2a2a2a;
+    --bg: #0e0e0e;
+    --text: #c8c8c8;
+    --muted: #555;
+    --border: #222;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* grain overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 40px;
+    padding: 40px 20px;
+    width: 100%; max-width: 360px;
+  }
+
+  /* role picker */
+  #role-screen {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 32px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .prompt {
+    font-size: 11px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  .role-btns {
+    display: flex; gap: 12px;
+  }
+
+  .role-btn {
+    padding: 10px 28px;
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .role-btn:hover {
+    border-color: #444;
+    color: var(--text);
+  }
+
+  /* main toggle screen */
+  #main-screen {
+    display: none; flex-direction: column;
+    align-items: center; gap: 36px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .top-label {
+    font-size: 10px; letter-spacing: 0.25em;
+    text-transform: uppercase; color: var(--muted);
+    height: 16px;
+  }
+
+  /* the big button */
+  .orb-wrap {
+    position: relative;
+    width: 200px; height: 200px;
+  }
+
+  .orb-ring {
+    position: absolute; inset: -20px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    transition: border-color 0.6s, box-shadow 0.6s;
+  }
+
+  .orb {
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    border: none; outline: none;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 32px; font-weight: 500;
+    letter-spacing: 0.08em;
+    transition: background 0.5s, color 0.5s, box-shadow 0.5s, transform 0.1s;
+    position: relative; z-index: 1;
+    background: var(--off);
+    color: var(--muted);
+    box-shadow: none;
+  }
+
+  .orb.is-on {
+    background: var(--on);
+    color: #fff;
+    box-shadow: 0 0 60px var(--on-glow), 0 0 120px var(--on-glow);
+  }
+
+  .orb.is-on ~ .orb-ring {
+    border-color: rgba(22,163,106,0.25);
+    box-shadow: 0 0 40px rgba(22,163,106,0.08);
+  }
+
+  /* for viewer: no pointer */
+  .orb.viewer { cursor: default; }
+  .orb:not(.viewer):active { transform: scale(0.94); }
+
+  /* status row */
+  .status-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.4s;
+    flex-shrink: 0;
+  }
+  .status-dot.live { background: var(--on); animation: pulse 1.8s infinite; }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+
+  .hint {
+    font-size: 11px; color: #3a3a3a;
+    text-align: center; line-height: 1.8;
+    letter-spacing: 0.03em;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- PASO 1: elegir rol -->
+  <div id="role-screen">
+    <p class="prompt">¿Quién sos?</p>
+    <div class="role-btns">
+      <button class="role-btn" onclick="init('novia')">Sol</button>
+      <button class="role-btn" onclick="init('el')">Elias</button>
+    </div>
+  </div>
+
+  <!-- PASO 2: pantalla principal -->
+  <div id="main-screen">
+    <p class="top-label" id="top-label"></p>
+
+    <div class="orb-wrap">
+      <div class="orb-ring" id="orb-ring"></div>
+      <button class="orb" id="orb" onclick="handleTap()">OFF</button>
+    </div>
+
+    <div class="status-row">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-txt">conectando...</span>
+    </div>
+
+    <p class="hint" id="hint"></p>
+  </div>
+
+</div>
+
+<script>
+  const BIN_ID  = '69e59de7856a68218950c712';
+  const API_KEY = '$2a$10$oyETVlaiHTb9T7Dx.Nvyd.tZlL7nxlYTnBoDEo331WpbgBK8ixmQS';
+  const URL     = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+  const HEADERS = { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY };
+
+  let role   = null;
+  let estado = 'off';
+  let timer  = null;
+
+  async function getEstado() {
+    const r = await fetch(URL + '/latest', { headers: HEADERS });
+    const d = await r.json();
+    return d.record?.estado === 'on' ? 'on' : 'off';
+  }
+
+  async function setEstado(s) {
+    await fetch(URL, {
+      method: 'PUT',
+      headers: HEADERS,
+      body: JSON.stringify({ estado: s })
+    });
+  }
+
+  function applyUI(s) {
+    estado = s;
+    const orb = document.getElementById('orb');
+    const dot = document.getElementById('status-dot');
+    const ring = document.getElementById('orb-ring');
+
+    orb.textContent = s === 'on' ? 'ON' : 'OFF';
+    orb.className   = 'orb' + (s === 'on' ? ' is-on' : '') + (role === 'el' ? ' viewer' : '');
+
+    if (s === 'on') {
+      dot.className = 'status-dot live';
+      ring.style.borderColor = 'rgba(22,163,106,0.25)';
+      ring.style.boxShadow   = '0 0 40px rgba(22,163,106,0.08)';
+    } else {
+      dot.className = 'status-dot';
+      ring.style.borderColor = 'transparent';
+      ring.style.boxShadow   = 'none';
+    }
+  }
+
+  function setStatus(txt) {
+    document.getElementById('status-txt').textContent = txt;
+  }
+
+  async function poll() {
+    try {
+      const s = await getEstado();
+      applyUI(s);
+      setStatus('actualizado ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
+    } catch(e) {
+      setStatus('sin conexión...');
+    }
+  }
+
+  async function handleTap() {
+    if (role !== 'novia') return;
+    const next = estado === 'on' ? 'off' : 'on';
+    applyUI(next);
+    setStatus('guardando...');
+    try {
+      await setEstado(next);
+      setStatus('listo · ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
+    } catch(e) {
+      setStatus('error, intentá de nuevo');
+    }
+  }
+
+  async function init(r) {
+    role = r;
+    document.getElementById('role-screen').style.display = 'none';
+    const main = document.getElementById('main-screen');
+    main.style.display = 'flex';
+
+    if (r === 'novia') {
+      document.getElementById('top-label').textContent = '';
+      document.getElementById('hint').textContent = '';
+    } else {
+      document.getElementById('top-label').textContent = 'sipio?';
+      
+    }
+
+    await poll();
+    timer = setInterval(poll, 5000);
+  }
+</script>
+
+</body>
+</html>
